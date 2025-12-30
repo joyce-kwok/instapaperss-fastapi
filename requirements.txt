@@ -3,5 +3,7 @@ uvicorn
 pydantic
 feedparser
 requests
+requests_oauthlib
 httpx
 python-dateutil
+python-multipart

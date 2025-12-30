@@ -8,8 +8,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Optional, Annotated
 from pydantic import BaseModel, Field
-from requests_oauthlib import OAuth1Session
-from fastapi import Depends, Form, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import PlainTextResponse, RedirectResponse, ORJSONResponse
 
@@ -17,11 +16,10 @@ app = FastAPI()
 security = HTTPBasic()
 
 CONSUMER_KEY = os.getenv('CONSUMER_KEY')
-CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
 ACCESS_TOKEN = os.getenv('ACCESS_TOKEN')
 username = os.getenv('username')
 password = os.getenv('password')
-base_url = 'https://www.instapaper.com/api/1/'
+base_url = 'https://getpocket.com/v3/'
 batch_size = 8
 existurls = []
 last_update: datetime = datetime.min.replace(tzinfo=timezone.utc)
@@ -33,35 +31,6 @@ class HousekeepRequest(BaseModel):
     weeks: int = Field(default=None)
     minutes: int = Field(default=None)
 
-@app.post("/add")
-def instapaper_add(
-    arturl : str = Form(""),
-    title: str = Form(""),
-    description: str = Form(""),
-    verification: bool = Depends(authenticate)
-):
-    if verification:
-     instaClient = make_instapaper_client()
-
-     url = base_url + 'bookmarks/add'
-
-     data = {
-        "url": arturl,
-        "title": title,
-        "description": description,
-        # other optional params like folder_id, resolve_final_url, etc.
-     }
-
-     resp = instaClient.post(url, data=data)
-
-     if resp.status_code != 200:
-         raise HTTPException(status_code=resp.status_code, detail=resp.text)
-         
-     return resp.json()    
-
-    else:
-        return "Unauthorized" 
-        
 def save_new_items_to_pocket(feed_url):
     """Save new items from an RSS feed to Pocket in batches.
     
@@ -275,7 +244,6 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
           return f"Cannot retrieve saved {source} feeds at the moment. Will not update news in this run."
 
 
-
 @app.get("/adduser", response_class=RedirectResponse)
 async def redirect_fastapi():
     url = base_url + 'oauth/request'
@@ -289,56 +257,13 @@ async def redirect_fastapi():
     return f"https://getpocket.com/auth/authorize?request_token={code}&redirect_uri=https://pocketapi-to-fastapi.onrender.com/get-token/{code}"
 
 
-@app.post("/get-token", response_class=PlainTextResponse)
-async def return_token():
-    url = base_url + 'oauth/access_token'
-
-    oauth = OAuth1Session(
-        CONSUMER_KEY,
-        client_secret=CONSUMER_SECRET
-    )
-
-    # xAuth parameters go in POST body
-    data = {
-        "x_auth_username": username,
-        "x_auth_password": password,
-        "x_auth_mode": "client_auth",
+@app.get("/get-token/{token}", response_class=PlainTextResponse)
+async def return_token(token: str):
+    url = base_url + 'oauth/authorize'
+    payload = {
+        'consumer_key': CONSUMER_KEY,
+        'code':token
     }
-    response = oauth.post(url, data=data)
-    
-    if resp.status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail=resp.text)
-
-    # Response is qline-like: oauth_token=...&oauth_token_secret=...
-    parts = dict(
-        item.split("=", 1) for item in resp.text.strip().split("&")
-    )
-    access_token = parts["oauth_token"]
-    access_token_secret = parts["oauth_token_secret"]
-
-    # You should store these for this user (DB, session, etc.)
-    return {
-        "access_token": access_token,
-        "access_token_secret": access_token_secret,
-    }
-
-
-def make_instapaper_client():
-    credentials = return_token()
-    access_token = credentials["access_token"]
-    access_token_secret = credentials["access_token_secret"]
-
-    return OAuth1Session(
-        CONSUMER_KEY,
-        client_secret=CONSUMER_SECRET,
-        resource_owner_key=access_token,
-        resource_owner_secret=access_token_secret,
-        signature_method="HMAC-SHA1",
-    )
-
-
-    
-
-
-
+    response = requests.post(url, json=payload)
+    return response.text
 
