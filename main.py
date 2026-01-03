@@ -145,7 +145,7 @@ def search_existing(source):
         'tag': source,
         'limit': 500
     }
-    response = session.post(url, params=params)
+    response = session.post(url, data=params)
     print(f"Calling list bookmarks API to search saved posts, response code is {response.status_code}")
     if response.status_code == 200:
        articles = response.json()
