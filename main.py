@@ -16,10 +16,12 @@ from fastapi.responses import PlainTextResponse, RedirectResponse, ORJSONRespons
 app = FastAPI()
 security = HTTPBasic() 
 
+app.state.access_token = None
+app.state.token_secret = None
+
 CONSUMER_KEY = os.getenv('CONSUMER_KEY')
 CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
-username = os.getenv('username')
-password = os.getenv('password')
+
 base_url = 'https://www.instapaper.com/api/1/'
 batch_size = 8
 existurls = []
@@ -229,23 +231,20 @@ async def recall(state, action, freq):
 def authenticate(
     credentials: Annotated[HTTPBasicCredentials, Depends(security)],
 ):
-    current_username_bytes = credentials.username.encode("utf8")
-    correct_username_bytes = username.encode("utf8")
-    is_correct_username = secrets.compare_digest(
-        current_username_bytes, correct_username_bytes
-    )
-    current_password_bytes = credentials.password.encode("utf8")
-    correct_password_bytes = password.encode("utf8")
-    is_correct_password = secrets.compare_digest(
-        current_password_bytes, correct_password_bytes
-    )
-    if not (is_correct_username and is_correct_password):
+    auth = return_token(credentials.username, credentials.password)
+
+    if auth["code"] != 0:
+        print("Could not authenticate with Instapaper")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-    return is_correct_username and is_correct_password
+    
+    app.state.access_token = auth["access_token"]
+    app.state.token_secret = auth["access_token_secret"]
+    
+    return auth["code"] == 0
 
 
 @app.get("/")
@@ -312,7 +311,7 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
 #     return f"https://getpocket.com/auth/authorize?request_token={code}&redirect_uri=https://pocketapi-to-fastapi.onrender.com/get-token/{code}"
 
 
-def return_token():
+def return_token(username, password):
     url = base_url + 'oauth/access_token'
 
     oauth = OAuth1Session(
@@ -350,20 +349,12 @@ def return_token():
 
 
 def make_instapaper_client():
-    credentials = return_token()
-    
-    if credentials["code"] != 0:
-        print("Could not authenticate with Instapaper")
-        return None
-        
-    access_token = credentials["access_token"]
-    access_token_secret = credentials["access_token_secret"]
 
     return OAuth1Session(
         CONSUMER_KEY,
         client_secret=CONSUMER_SECRET,
-        resource_owner_key=access_token,
-        resource_owner_secret=access_token_secret,
+        resource_owner_key= app.state.access_token,
+        resource_owner_secret= app.state.token_secret,
         signature_method="HMAC-SHA1",
     )
 
