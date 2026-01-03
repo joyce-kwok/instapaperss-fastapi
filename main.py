@@ -41,6 +41,10 @@ class HousekeepRequest(BaseModel):
     weeks: int = Field(default=None)
     minutes: int = Field(default=None)
 
+class loginRequest(BaseModel):
+    insta_username: str
+    insta_password: str
+
         
 # def save_new_items_to_pocket(feed_url):
 #     """Save new items from an RSS feed to Pocket in batches.
@@ -308,7 +312,7 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
 
 
 @app.post("/get-token", response_class=PlainTextResponse)
-async def return_token():
+async def return_token(request: loginRequest):
     url = base_url + 'oauth/access_token'
 
     oauth = OAuth1Session(
@@ -318,8 +322,8 @@ async def return_token():
 
     # xAuth parameters go in POST body
     data = {
-        "x_auth_username": username,
-        "x_auth_password": password,
+        "x_auth_username": request.insta_username,
+        "x_auth_password": request.insta_password,
         "x_auth_mode": "client_auth",
     }
     resp = oauth.post(url, data=data)
