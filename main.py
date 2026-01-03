@@ -29,7 +29,8 @@ session = OAuth1Session(
     CONSUMER_KEY,
     client_secret=CONSUMER_SECRET,
     resource_owner_key = ACCESS_TOKEN,
-    resource_owner_secret = ACCESS_TOKEN_SECRET
+    resource_owner_secret = ACCESS_TOKEN_SECRET,
+    signature_method="HMAC-SHA1"
 )
 last_update: datetime = datetime.min.replace(tzinfo=timezone.utc)
 
@@ -146,7 +147,7 @@ def search_existing(source):
         'limit': 500
     }
     response = session.post(url, data=params)
-    print(f"Calling list bookmarks API to search saved posts, response code is {response.status_code}, and the response body is {response.text}")
+    print(f"Calling list bookmarks API to search saved posts, response code is {response.status_code}")
     if response.status_code == 200:
        articles = response.json()
        article_list = [item for item in articles if item.get("type") == "bookmark"]
