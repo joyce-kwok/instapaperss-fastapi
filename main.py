@@ -147,6 +147,7 @@ def search_existing(source):
     }
     response = session.post(url, data=params)
     print(f"Calling list bookmarks API to search saved posts, response code is {response.status_code}")
+    print(response.text)
     if response.status_code == 200:
        articles = response.json()
        article_list = [item for item in articles if item.get("type") == "bookmark"]
@@ -154,7 +155,7 @@ def search_existing(source):
           last_item = article_list[0] # Returns the full last item dict
           latest = datetime.fromtimestamp(int(last_item['time']), tz=timezone.utc)
           print(f"Last updated: {latest}")
-          for article in article_list.values():
+          for article in article_list:
               urlist.append(article['url'])
        else:
           print("No existing articles for this news source") 
@@ -286,7 +287,7 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
        existurls, last_update, code = search_existing(source)
        if code == 200:
           with concurrent.futures.ThreadPoolExecutor() as executor:
-               list(executor.map(save_new_items_to_instapaper, RSS_FEEDS[source],source))
+            list(executor.map(lambda feed: save_new_items_to_instapaper(feed, source), RSS_FEEDS[source]))
           return f"Saved {source} feeds to pocket"
        else:
           return f"Cannot retrieve saved {source} feeds at the moment. Will not update news in this run."
