@@ -311,7 +311,7 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
 #     return f"https://getpocket.com/auth/authorize?request_token={code}&redirect_uri=https://pocketapi-to-fastapi.onrender.com/get-token/{code}"
 
 
-@app.post("/get-token", response_class=PlainTextResponse)
+@app.post("/get-token")
 async def return_token(request: loginRequest):
     url = base_url + 'oauth/access_token'
 
