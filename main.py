@@ -18,8 +18,6 @@ security = HTTPBasic()
 
 CONSUMER_KEY = os.getenv('CONSUMER_KEY')
 CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
-ACCESS_TOKEN = os.getenv('ACCESS_TOKEN')
-ACCESS_TOKEN_SECRET = os.getenv('ACCESS_TOKEN_SECRET')
 username = os.getenv('username')
 password = os.getenv('password')
 base_url = 'https://www.instapaper.com/api/1/'
@@ -120,7 +118,7 @@ def save_new_items_to_instapaper(feed_url,source):
                    "description": entry.summary,
                    "tags": json.dumps(tags_obj)   # other optional params like folder_id, resolve_final_url, etc.
                 }
-               session = own_session()
+               session = make_instapaper_client()
                resp = session.post(url, data=data)
                print(resp.text)
     except Exception as e:
@@ -144,7 +142,7 @@ def search_existing(source):
         'tag': source,
         'limit': 500
     }
-    session = own_session()
+    session = make_instapaper_client()
     response = session.post(url, data=params)
     # print("consumer key is " + CONSUMER_KEY)
     # print("consumer secret is " + CONSUMER_SECRET)
@@ -314,8 +312,7 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
 #     return f"https://getpocket.com/auth/authorize?request_token={code}&redirect_uri=https://pocketapi-to-fastapi.onrender.com/get-token/{code}"
 
 
-@app.post("/get-token")
-async def return_token(request: loginRequest):
+def return_token(request: loginRequest):
     url = base_url + 'oauth/access_token'
 
     oauth = OAuth1Session(
@@ -332,7 +329,10 @@ async def return_token(request: loginRequest):
     resp = oauth.post(url, data=data)
     
     if resp.status_code != 200:
-        raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return {
+            "code": -1,
+            "detail": "Failed to obtain access token"
+            }
 
     # Response is qline-like: oauth_token=...&oauth_token_secret=...
     parts = dict(
@@ -343,6 +343,7 @@ async def return_token(request: loginRequest):
 
     # You should store these for this user (DB, session, etc.)
     return {
+        "code": 0,
         "access_token": access_token,
         "access_token_secret": access_token_secret,
     }
@@ -350,6 +351,11 @@ async def return_token(request: loginRequest):
 
 def make_instapaper_client():
     credentials = return_token()
+    
+    if credentials["code"] != 0:
+        print("Could not authenticate with Instapaper")
+        return None
+        
     access_token = credentials["access_token"]
     access_token_secret = credentials["access_token_secret"]
 
@@ -361,14 +367,6 @@ def make_instapaper_client():
         signature_method="HMAC-SHA1",
     )
 
-def own_session():
-    return OAuth1Session (
-    CONSUMER_KEY,
-    client_secret=CONSUMER_SECRET,
-    resource_owner_key =ACCESS_TOKEN,
-    resource_owner_secret =ACCESS_TOKEN_SECRET,
-    signature_method="HMAC-SHA1"
-    )
     
 
 
