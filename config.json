@@ -46,6 +46,9 @@
             "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness",
             "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain",
             "https://feeds.content.dowjones.io/public/rss/RSSWSJD"
+        ],
+        "巴哈姆特": [
+            "https://gnn.gamer.com.tw/rss.xml"
         ]
     }
 }

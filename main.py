@@ -14,16 +14,23 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import PlainTextResponse, RedirectResponse, ORJSONResponse
 
 app = FastAPI()
-security = HTTPBasic()
+security = HTTPBasic() 
 
 CONSUMER_KEY = os.getenv('CONSUMER_KEY')
 CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
 ACCESS_TOKEN = os.getenv('ACCESS_TOKEN')
+ACCESS_TOKEN_SECRET = os.getenv('ACCESS_TOKEN_SECRET')
 username = os.getenv('username')
 password = os.getenv('password')
 base_url = 'https://www.instapaper.com/api/1/'
 batch_size = 8
 existurls = []
+session = OAuth1Session(
+    CONSUMER_KEY,
+    client_secret=CONSUMER_SECRET,
+    resource_owner_key = ACCESS_TOKEN,
+    resource_owner_secret = ACCESS_TOKEN_SECRET
+)
 last_update: datetime = datetime.min.replace(tzinfo=timezone.utc)
 
 class HousekeepRequest(BaseModel):
@@ -33,43 +40,61 @@ class HousekeepRequest(BaseModel):
     weeks: int = Field(default=None)
     minutes: int = Field(default=None)
 
-@app.post("/add")
-def instapaper_add(
-    arturl : str = Form(""),
-    title: str = Form(""),
-    description: str = Form(""),
-    verification: bool = Depends(authenticate)
-):
-    if verification:
-     instaClient = make_instapaper_client()
-
-     url = base_url + 'bookmarks/add'
-
-     data = {
-        "url": arturl,
-        "title": title,
-        "description": description,
-        # other optional params like folder_id, resolve_final_url, etc.
-     }
-
-     resp = instaClient.post(url, data=data)
-
-     if resp.status_code != 200:
-         raise HTTPException(status_code=resp.status_code, detail=resp.text)
-         
-     return resp.json()    
-
-    else:
-        return "Unauthorized" 
         
-def save_new_items_to_pocket(feed_url):
+# def save_new_items_to_pocket(feed_url):
+#     """Save new items from an RSS feed to Pocket in batches.
+    
+#     Args:
+#         feed_url: URL of the RSS feed to process
+#         batch_size: Number of items to send in each batch (default: 6)
+#     """
+#     url = base_url + '/bookmarks/list'
+#     print(f"Checking {feed_url}...")
+#     # print (f"Existing URLs {existurls}...")
+    
+#     try:
+#         feed = feedparser.parse(feed_url)
+#         if not feed.entries:
+#             print("No entries found in feed.")
+#             return
+            
+#         # Process items in reverse order (oldest first)
+#         entries = reversed(feed.entries)
+#         batch = []
+        
+#         for entry in entries:
+#             published_datetime = parsedate_to_datetime(entry.published)
+#             unix_timestamp = int(published_datetime.timestamp())
+#             # print(f"Checking if {entry.link} is a new link... ")
+#             if entry.link not in existurls and published_datetime > last_update:
+#                print(f"{entry.link} is a new link and will be pushed")
+#                print(f"Original Published Time: {entry.published}, Unix Timestamp (in integer): {unix_timestamp}")
+#                batch.append({
+#                 "action": "add",
+#                 "url": entry.link,
+#                 "title": entry.title,
+#                 "time": unix_timestamp
+#                })
+            
+#             if len(batch) >= batch_size:
+#                 _send_batch_to_pocket(batch)
+#                 batch = []
+                
+#         # Send any remaining items in the final partial batch
+#         if batch:
+#             _send_batch_to_pocket(batch)
+            
+#     except Exception as e:
+#         print(f"Error processing feed {feed_url}: {str(e)}")
+
+def save_new_items_to_instapaper(feed_url,source):
     """Save new items from an RSS feed to Pocket in batches.
     
     Args:
         feed_url: URL of the RSS feed to process
         batch_size: Number of items to send in each batch (default: 6)
     """
-    url = base_url + 'add'
+    url = base_url + 'bookmarks/add'
     print(f"Checking {feed_url}...")
     # print (f"Existing URLs {existurls}...")
     
@@ -90,55 +115,47 @@ def save_new_items_to_pocket(feed_url):
             if entry.link not in existurls and published_datetime > last_update:
                print(f"{entry.link} is a new link and will be pushed")
                print(f"Original Published Time: {entry.published}, Unix Timestamp (in integer): {unix_timestamp}")
-               batch.append({
-                "action": "add",
-                "url": entry.link,
-                "title": entry.title,
-                "time": unix_timestamp
-               })
-            
-            if len(batch) >= batch_size:
-                _send_batch_to_pocket(batch)
-                batch = []
-                
-        # Send any remaining items in the final partial batch
-        if batch:
-            _send_batch_to_pocket(batch)
-            
+               tags_obj = [{"name": source}]
+               data = {
+                   "url": entry.link,
+                   "title": entry.title,
+                   "description": entry.summary,
+                   "tags": json.dumps(tags_obj)   # other optional params like folder_id, resolve_final_url, etc.
+                }
+               resp = session.post(url, data=data)
+               print(resp.text)
     except Exception as e:
         print(f"Error processing feed {feed_url}: {str(e)}")
 
-def _send_batch_to_pocket(batch):
-    """Helper function to send a batch of items to Pocket."""
-    try:
-        json_batch = json.dumps(batch)
-        encoded = urllib.parse.quote(json_batch)
-        modify(encoded)
-    except Exception as e:
-        print(f"Error sending batch to Pocket: {str(e)}")
+
+# def _send_batch_to_pocket(batch):
+#     """Helper function to send a batch of items to Pocket."""
+#     try:
+#         json_batch = json.dumps(batch)
+#         encoded = urllib.parse.quote(json_batch)
+#         modify(encoded)
+#     except Exception as e:
+#         print(f"Error sending batch to Pocket: {str(e)}")
 
 def search_existing(source):
     urlist = []
     latest = datetime.min.replace(tzinfo=timezone.utc)
-    url = base_url + 'get'
+    url = base_url + 'bookmarks/list'
     params = {
-        'consumer_key': CONSUMER_KEY,
-        'access_token': ACCESS_TOKEN,
-        'sort': 'newest',
-        'search': source
+        'tag': source,
+        'limit': 500
     }
-    response = requests.post(url, json=params)
-    print(f"Calling retrieve API to search saved posts, response code is {response.status_code}")
+    response = session.post(url, params=params)
+    print(f"Calling list bookmarks API to search saved posts, response code is {response.status_code}")
     if response.status_code == 200:
        articles = response.json()
-       article_list = articles['list']
+       article_list = [item for item in articles if item.get("type") == "bookmark"]
        if len(article_list) > 0:
-          last_item_key = next(reversed(article_list))  # Returns "4192836625"
-          last_item = article_list[last_item_key] # Returns the full last item dict
-          latest = datetime.fromtimestamp(int(last_item['time_added']), tz=timezone.utc)
+          last_item = article_list[0] # Returns the full last item dict
+          latest = datetime.fromtimestamp(int(last_item['time']), tz=timezone.utc)
           print(f"Last updated: {latest}")
           for article in article_list.values():
-              urlist.append(article['given_url'])
+              urlist.append(article['url'])
        else:
           print("No existing articles for this news source") 
           print(f"Last updated: {latest}")
@@ -269,24 +286,24 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
        existurls, last_update, code = search_existing(source)
        if code == 200:
           with concurrent.futures.ThreadPoolExecutor() as executor:
-               list(executor.map(save_new_items_to_pocket, RSS_FEEDS[source]))
+               list(executor.map(save_new_items_to_instapaper, RSS_FEEDS[source],source))
           return f"Saved {source} feeds to pocket"
        else:
           return f"Cannot retrieve saved {source} feeds at the moment. Will not update news in this run."
 
 
 
-@app.get("/adduser", response_class=RedirectResponse)
-async def redirect_fastapi():
-    url = base_url + 'oauth/request'
-    payload = {
-        'consumer_key': CONSUMER_KEY,
-        'redirect_uri': "https://pocketapi-to-fastapi.onrender.com"
-    }
-    response = requests.post(url, json=payload)
-    code = response.text.split("=")[-1]
-    print(f"retrieved code = {code}")
-    return f"https://getpocket.com/auth/authorize?request_token={code}&redirect_uri=https://pocketapi-to-fastapi.onrender.com/get-token/{code}"
+# @app.get("/adduser", response_class=RedirectResponse)
+# async def redirect_fastapi():
+#     url = base_url + 'oauth/request'
+#     payload = {
+#         'consumer_key': CONSUMER_KEY,
+#         'redirect_uri': "https://pocketapi-to-fastapi.onrender.com"
+#     }
+#     response = requests.post(url, json=payload)
+#     code = response.text.split("=")[-1]
+#     print(f"retrieved code = {code}")
+#     return f"https://getpocket.com/auth/authorize?request_token={code}&redirect_uri=https://pocketapi-to-fastapi.onrender.com/get-token/{code}"
 
 
 @app.post("/get-token", response_class=PlainTextResponse)
@@ -304,7 +321,7 @@ async def return_token():
         "x_auth_password": password,
         "x_auth_mode": "client_auth",
     }
-    response = oauth.post(url, data=data)
+    resp = oauth.post(url, data=data)
     
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail=resp.text)
