@@ -28,8 +28,8 @@ existurls = []
 session = OAuth1Session(
     CONSUMER_KEY,
     client_secret=CONSUMER_SECRET,
-    resource_owner_key = ACCESS_TOKEN,
-    resource_owner_secret = ACCESS_TOKEN_SECRET,
+    resource_owner_key =ACCESS_TOKEN,
+    resource_owner_secret =ACCESS_TOKEN_SECRET,
     signature_method="HMAC-SHA1"
 )
 last_update: datetime = datetime.min.replace(tzinfo=timezone.utc)
@@ -151,6 +151,14 @@ def search_existing(source):
         'limit': 500
     }
     response = session.post(url, data=params)
+    print("consumer key is " + CONSUMER_KEY)
+    print("consumer secret is " + CONSUMER_SECRET)
+    print("access token is " + ACCESS_TOKEN)
+    print("token secret is " + ACCESS_TOKEN_SECRET)
+    print("searching existing saved posts for source: " + source)
+    print("request parameters: " + str(params))
+    print("request url: " + url)
+    print("response text: " + response.text)
     print(f"Calling list bookmarks API to search saved posts, response code is {response.status_code}")
     if response.status_code == 200:
        articles = response.json()
