@@ -25,13 +25,6 @@ password = os.getenv('password')
 base_url = 'https://www.instapaper.com/api/1/'
 batch_size = 8
 existurls = []
-session = OAuth1Session(
-    CONSUMER_KEY,
-    client_secret=CONSUMER_SECRET,
-    resource_owner_key =ACCESS_TOKEN,
-    resource_owner_secret =ACCESS_TOKEN_SECRET,
-    signature_method="HMAC-SHA1"
-)
 last_update: datetime = datetime.min.replace(tzinfo=timezone.utc)
 
 class HousekeepRequest(BaseModel):
@@ -127,6 +120,7 @@ def save_new_items_to_instapaper(feed_url,source):
                    "description": entry.summary,
                    "tags": json.dumps(tags_obj)   # other optional params like folder_id, resolve_final_url, etc.
                 }
+               session = own_session()
                resp = session.post(url, data=data)
                print(resp.text)
     except Exception as e:
@@ -150,15 +144,16 @@ def search_existing(source):
         'tag': source,
         'limit': 500
     }
+    session = own_session()
     response = session.post(url, data=params)
-    print("consumer key is " + CONSUMER_KEY)
-    print("consumer secret is " + CONSUMER_SECRET)
-    print("access token is " + ACCESS_TOKEN)
-    print("token secret is " + ACCESS_TOKEN_SECRET)
-    print("searching existing saved posts for source: " + source)
-    print("request parameters: " + str(params))
-    print("request url: " + url)
-    print("response text: " + response.text)
+    # print("consumer key is " + CONSUMER_KEY)
+    # print("consumer secret is " + CONSUMER_SECRET)
+    # print("access token is " + ACCESS_TOKEN)
+    # print("token secret is " + ACCESS_TOKEN_SECRET)
+    # print("searching existing saved posts for source: " + source)
+    # print("request parameters: " + str(params))
+    # print("request url: " + url)
+    # print("response text: " + response.text)
     print(f"Calling list bookmarks API to search saved posts, response code is {response.status_code}")
     if response.status_code == 200:
        articles = response.json()
@@ -366,7 +361,14 @@ def make_instapaper_client():
         signature_method="HMAC-SHA1",
     )
 
-
+def own_session():
+    return OAuth1Session (
+    CONSUMER_KEY,
+    client_secret=CONSUMER_SECRET,
+    resource_owner_key =ACCESS_TOKEN,
+    resource_owner_secret =ACCESS_TOKEN_SECRET,
+    signature_method="HMAC-SHA1"
+    )
     
 
 
