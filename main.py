@@ -110,7 +110,7 @@ def save_new_items_to_instapaper(feed_url,source):
             published_datetime = parsedate_to_datetime(entry.published)
             unix_timestamp = int(published_datetime.timestamp())
             # print(f"Checking if {entry.link} is a new link... ")
-            if entry.link not in existurls and published_datetime > last_update:
+            if entry.link not in existurls:
                print(f"{entry.link} is a new link and will be pushed")
                print(f"Original Published Time: {entry.published}, Unix Timestamp (in integer): {unix_timestamp}")
                tags_obj = [{"name": source}]
