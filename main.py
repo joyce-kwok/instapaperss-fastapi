@@ -312,7 +312,7 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
 #     return f"https://getpocket.com/auth/authorize?request_token={code}&redirect_uri=https://pocketapi-to-fastapi.onrender.com/get-token/{code}"
 
 
-def return_token(request: loginRequest):
+def return_token():
     url = base_url + 'oauth/access_token'
 
     oauth = OAuth1Session(
@@ -322,8 +322,8 @@ def return_token(request: loginRequest):
 
     # xAuth parameters go in POST body
     data = {
-        "x_auth_username": request.insta_username,
-        "x_auth_password": request.insta_password,
+        "x_auth_username": username,
+        "x_auth_password": password,
         "x_auth_mode": "client_auth",
     }
     resp = oauth.post(url, data=data)
