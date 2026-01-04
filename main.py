@@ -116,6 +116,9 @@ def retrievehousekeepItems(amount, skipStarred, getArchived, tag):
     print(f"Calling retrieve API for housekeeping, response code is {response.status_code}")
     if response.status_code == 200:
        articles = response.json()
+       print("request parameters: " + str(params))
+       print("request url: " + url)
+       print("response text: " + response.text)
        article_list = [
         item
         for item in articles
