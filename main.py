@@ -98,7 +98,6 @@ def search_existing(source):
               urlist.append(article['url'])
        else:
           print("No existing articles for this news source") 
-          print(f"Last updated: {latest}")
     else:
         urlist.append('error')
     return urlist, response.status_code
