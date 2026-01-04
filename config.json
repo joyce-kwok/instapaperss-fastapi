@@ -3,6 +3,9 @@
         "bbc": [
             "https://feeds.bbci.co.uk/zhongwen/trad/rss.xml"
         ],
+        "billboard": [
+            "https://www.billboard.com/feed/"
+        ],
         "rthk": [
             "https://rthk9.rthk.hk/rthk/news/rss/c_expressnews_cfinance.xml",
             "https://rthk9.rthk.hk/rthk/news/rss/c_expressnews_clocal.xml"
@@ -32,12 +35,18 @@
             "https://www.theguardian.com/uk/technology/rss",
             "https://www.theguardian.com/crosswords/rss"
         ],
+        "techcrunch": [
+            "https://techcrunch.com/latest/feed"
+        ],
         "hket": [
             "https://www.hket.com/rss/hongkong",
             "https://www.hket.com/rss/finance"
         ],
         "newtalk": [
             "https://newtalk.tw/rss/category/8"
+        ],
+        "nimh": [
+            "https://www.nimh.nih.gov/site-info/index-rss.atom"
         ],
         "ltn": [
             "https://news.ltn.com.tw/rss/world.xml"
