@@ -145,11 +145,6 @@ async def archive_items(amount, skipStarred, bytag):
                }
         session = make_instapaper_client()
         resp = session.post(url, data=params)
-        print("consumer key is " + CONSUMER_KEY)
-        print("consumer secret is " + CONSUMER_SECRET)
-        print("access token is " + ACCESS_TOKEN)
-        print("token secret is " + ACCESS_TOKEN_SECRET)
-        print("searching existing saved posts for source: " + source)
         print("request parameters: " + str(params))
         print("request url: " + url)
         print("response text: " + resp.text)
