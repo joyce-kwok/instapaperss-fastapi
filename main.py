@@ -103,7 +103,7 @@ def search_existing(source):
         urlist.append('error')
     return urlist, response.status_code
 
-async def retrievehousekeepItems(amount, skipStarred, getArchived, tag):
+def retrievehousekeepItems(amount, skipStarred, getArchived, tag):
     url = base_url + 'bookmarks/list'
     housekeep_ids = []
     params = {
