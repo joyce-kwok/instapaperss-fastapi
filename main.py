@@ -123,7 +123,7 @@ def retrievehousekeepItems(amount, skipStarred, getArchived, tag):
         item
         for item in articles
         if item.get("type") == "bookmark"
-        and (not skipStarred or item.get("starred") == 0)
+        and (not skipStarred or item.get("starred") == "0")
       ]
        if len(article_list) > 0:
           temp = article_list[-amount:]
