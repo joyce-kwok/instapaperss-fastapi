@@ -1,4 +1,4 @@
-# Instapaperss FastAPI
+# RSS for Instapaper
 
 **Development in progress.**
 
@@ -8,6 +8,7 @@ A small service for Instapaper / Kobo users to:
 - Keep Instapaper bookmarks tidy with tags and cleanup rules
 
 This project is a thin wrapper around the Instapaper Full API with RSS feed integration.
+Users may schedule the API call to push feeds/ housekeep periodically.
 
 ## Features
 
