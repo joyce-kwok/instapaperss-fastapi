@@ -18,6 +18,10 @@
             "https://news.mingpao.com/rss/ins/s00005.xml",
             "https://news.mingpao.com/rss/ins/s00024.xml"
         ],
+         "investingcomhk": [
+            "https://hk.investing.com/rss/news_14.rss",
+            "https://hk.investing.com/rss/market_overview.rss"
+        ],
         "telegraph": [
             "https://www.telegraph.co.uk/rss.xml"
         ],
