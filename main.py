@@ -65,7 +65,7 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
                params = {
                    "url": entry.link,
                    "title": entry.title,
-                   "description": entry.summary,
+                   "description": entry.summary if entry.summary else "",
                    "tags": json.dumps(tags_obj)   # other optional params like folder_id, resolve_final_url, etc.
                 }
                session = make_instapaper_client()
