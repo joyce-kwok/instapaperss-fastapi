@@ -62,10 +62,16 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
             if entry.link not in existurls:
                print(f"{entry.link} is a new link and will be pushed")
                tags_obj = [{"name": source}]
+               description = (
+                  getattr(entry, "summary", None)
+                  or getattr(entry, "description", None)
+                  or getattr(entry, "summary_detail", {}).get("value", "")
+                  or ""
+                )
                params = {
                    "url": entry.link,
                    "title": entry.title,
-                   "description": entry.summary if entry.summary else "",
+                   "description": description,
                    "tags": json.dumps(tags_obj)   # other optional params like folder_id, resolve_final_url, etc.
                 }
                session = make_instapaper_client()
