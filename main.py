@@ -58,7 +58,6 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
         batch = []
         
         for entry in entries:
-            unix_timestamp = int(published_datetime.timestamp())
             # print(f"Checking if {entry.link} is a new link... ")
             if entry.link not in existurls:
                print(f"{entry.link} is a new link and will be pushed")
