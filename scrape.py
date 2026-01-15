@@ -1,4 +1,7 @@
-
+import requests
+from bs4 import BeautifulSoup
+from datetime import datetime
+from email.utils import format_datetime
 # change pg=N or loop over pages if you want more items
 def fetch_items_from_sanrio_news(url: str):
     resp = requests.get(url, timeout=10)
