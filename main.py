@@ -9,7 +9,6 @@ from requests_oauthlib import OAuth1Session
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import PlainTextResponse, ORJSONResponse
-from scrape import fetch_items, build_rss
 
 app = FastAPI()
 security = HTTPBasic() 
