@@ -149,7 +149,7 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
                if isinstance(source, list):
                 tags_obj = source
                else: 
-                tags_obj = [{"name": source}]
+                tags_obj = json.dumps([{"name": source}])
                description = (
                   getattr(entry, "summary", None)
                   or getattr(entry, "description", None)
@@ -160,7 +160,7 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
                    "url": entry.link,
                    "title": entry.title,
                    "description": description,
-                   "tags": json.dumps(tags_obj)   # other optional params like folder_id, resolve_final_url, etc.
+                   "tags": tags_obj   # other optional params like folder_id, resolve_final_url, etc.
                 }
                session = make_instapaper_client()
                resp = session.post(url, data=params)
