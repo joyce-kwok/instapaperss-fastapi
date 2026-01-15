@@ -147,7 +147,7 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
             if entry.link not in existurls:
                print(f"{entry.link} is a new link and will be pushed")
                if isinstance(source, list):
-                tags_obj = source
+                tags_obj = source.model_dump_json()
                else: 
                 tags_obj = json.dumps([{"name": source}])
                description = (
