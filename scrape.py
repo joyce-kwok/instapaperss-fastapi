@@ -5,7 +5,6 @@ from email.utils import format_datetime
 from xml.sax.saxutils import escape
 
 BASE_URL = "https://www.sanrio.co.jp"
-LIST_URL = "https://www.sanrio.co.jp/news/?chara=2454&pg=1"
 # change pg=N or loop over pages if you want more items
 
 # change pg=N or loop over pages if you want more items

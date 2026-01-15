@@ -281,6 +281,7 @@ async def save_source(request: saveRequest, verification: bool = Depends(authent
 
 @app.get("/sanriorss/gudetama")
 def scrape_route():
+    LIST_URL = "https://www.sanrio.co.jp/news/?chara=2454&pg=1"
     items = fetch_items(LIST_URL)
     rss_xml = build_rss(items)
     return rss_xml
