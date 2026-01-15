@@ -9,7 +9,7 @@ from requests_oauthlib import OAuth1Session
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import PlainTextResponse, ORJSONResponse
-from scrape import fetch_items_from_sanrio_news
+from scrape import fetch_items, build_rss
 
 app = FastAPI()
 security = HTTPBasic() 
@@ -281,6 +281,6 @@ async def save_source(request: saveRequest, verification: bool = Depends(authent
 
 @app.get("/sanriorss/gudetama")
 def scrape_route():
-    url = 'https://www.sanrio.co.jp/news/?chara=2454&pg=1'
-    result = fetch_items_from_sanrio_news(url)
-    return result
+    items = fetch_items(LIST_URL)
+    rss_xml = build_rss(items)
+    return rss_xml

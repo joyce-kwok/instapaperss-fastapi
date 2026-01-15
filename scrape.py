@@ -2,8 +2,14 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 from email.utils import format_datetime
+from xml.sax.saxutils import escape
+
+BASE_URL = "https://www.sanrio.co.jp"
+LIST_URL = "https://www.sanrio.co.jp/news/?chara=2454&pg=1"
 # change pg=N or loop over pages if you want more items
-def fetch_items_from_sanrio_news(url: str):
+
+# change pg=N or loop over pages if you want more items
+def fetch_items(url: str):
     resp = requests.get(url, timeout=10)
     resp.raise_for_status()
 
@@ -46,3 +52,37 @@ def fetch_items_from_sanrio_news(url: str):
         )
 
     return items
+
+
+
+def build_rss(items):
+    channel_title = "サンリオニュース - ぐでたま"
+    channel_link = "https://www.sanrio.co.jp/news/?chara=2454"
+    channel_desc = "サンリオ公式サイトのぐでたま関連ニュースRSSフィード（非公式）"
+
+    parts = []
+    parts.append('<?xml version="1.0" encoding="UTF-8"?>')
+    parts.append('<rss version="2.0">')
+    parts.append("<channel>")
+    parts.append(f"<title>{escape(channel_title)}</title>")
+    parts.append(f"<link>{channel_link}</link>")
+    parts.append(f"<description>{escape(channel_desc)}</description>")
+    parts.append("<language>ja</language>")
+
+    for it in items:
+        parts.append("<item>")
+        parts.append(f"<title><![CDATA[{it['title']}]]></title>")
+        parts.append(f"<link>{it['link']}</link>")
+        parts.append(f"<guid isPermaLink=\"true\">{it['link']}</guid>")
+        if it["pubDate"]:
+            parts.append(f"<pubDate>{it['pubDate']}</pubDate>")
+        if it["category"]:
+            parts.append(f"<category><![CDATA[{it['category']}]]></category>")
+        parts.append("<description><![CDATA[]]></description>")
+        parts.append("</item>")
+
+    parts.append("</channel>")
+    parts.append("</rss>")
+
+    return "\n".join(parts)
+
