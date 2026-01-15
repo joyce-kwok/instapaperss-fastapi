@@ -14,7 +14,7 @@ def fetch_items(url: str):
 
     items = []
     # news list wrapper; class name taken from this page’s HTML
-    news_list = soup.select_one(".c-list-news")  # ul or div that wraps the list [page:1]
+    news_list = soup.select_one(".c-list-news .-sp-column2")  # ul or div that wraps the list [page:1]
     if not news_list:
         return items
 
