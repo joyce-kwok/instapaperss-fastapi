@@ -1,17 +1,14 @@
-import os, time, secrets
+import os
 import concurrent.futures
 import feedparser
-import requests, json
-import urllib.parse
-from httpx import AsyncClient
-from datetime import datetime, timedelta, timezone
-from email.utils import parsedate_to_datetime
+import json
+from datetime import datetime, timezone
 from typing import Optional, Annotated
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, WithJsonSchema
 from requests_oauthlib import OAuth1Session
-from fastapi import Depends, Form, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.responses import PlainTextResponse, RedirectResponse, ORJSONResponse
+from fastapi.responses import PlainTextResponse, ORJSONResponse
 
 app = FastAPI()
 security = HTTPBasic() 
@@ -23,8 +20,8 @@ CONSUMER_KEY = os.getenv('CONSUMER_KEY')
 CONSUMER_SECRET = os.getenv('CONSUMER_SECRET')
 
 base_url = 'https://www.instapaper.com/api/1/'
-batch_size = 8
 
+# Request models
 class HousekeepRequest(BaseModel):
     action: str
     amount: int = Field(default=None)
@@ -36,49 +33,71 @@ class loginRequest(BaseModel):
     insta_username: str
     insta_password: str
 
-def save_new_items_to_instapaper(feed_url, source, existurls):
-    """Save new items from an RSS feed to Pocket in batches.
+class saveRequest(BaseModel):
+    url: str
+    tags: Optional[list[str]] = Annotated[list[str], Field(strict=True), WithJsonSchema({'name': 'Tag Name'})]
+
+# Authentication methods
+def make_instapaper_client():
+    return OAuth1Session(
+        CONSUMER_KEY,
+        client_secret=CONSUMER_SECRET,
+        resource_owner_key= app.state.access_token,
+        resource_owner_secret= app.state.token_secret,
+        signature_method="HMAC-SHA1",
+    )
+
+def return_token(username, password):
+    url = base_url + 'oauth/access_token'
+
+    oauth = OAuth1Session(
+        CONSUMER_KEY,
+        client_secret=CONSUMER_SECRET
+    )
+
+    # xAuth parameters go in POST body
+    params = {
+        "x_auth_username": username,
+        "x_auth_password": password,
+        "x_auth_mode": "client_auth",
+    }
+    resp = oauth.post(url, data=params)
     
-    Args:
-        feed_url: URL of the RSS feed to process
-        batch_size: Number of items to send in each batch (default: 6)
-    """
-    url = base_url + 'bookmarks/add'
-    print(f"Checking {feed_url}...")
-    # print (f"Existing URLs {existurls}...")
-    
-    try:
-        feed = feedparser.parse(feed_url)
-        if not feed.entries:
-            print("No entries found in feed.")
-            return
-            
-        # Process items in reverse order (oldest first)
-        entries = reversed(feed.entries)
-        batch = []
-        
-        for entry in entries:
-            # print(f"Checking if {entry.link} is a new link... ")
-            if entry.link not in existurls:
-               print(f"{entry.link} is a new link and will be pushed")
-               tags_obj = [{"name": source}]
-               description = (
-                  getattr(entry, "summary", None)
-                  or getattr(entry, "description", None)
-                  or getattr(entry, "summary_detail", {}).get("value", "")
-                  or ""
-                )
-               params = {
-                   "url": entry.link,
-                   "title": entry.title,
-                   "description": description,
-                   "tags": json.dumps(tags_obj)   # other optional params like folder_id, resolve_final_url, etc.
-                }
-               session = make_instapaper_client()
-               resp = session.post(url, data=params)
-               print(resp.text)
-    except Exception as e:
-        print(f"Error processing feed {feed_url}: {str(e)}")
+    if resp.status_code != 200:
+        return {
+            "code": -1,
+            "detail": "Failed to obtain access token"
+            }
+
+    # Response is qline-like: oauth_token=...&oauth_token_secret=...
+    parts = dict(
+        item.split("=", 1) for item in resp.text.strip().split("&")
+    )
+    access_token = parts["oauth_token"]
+    access_token_secret = parts["oauth_token_secret"]
+
+    # You should store these for this user (DB, session, etc.)
+    return {
+        "code": 0,
+        "access_token": access_token,
+        "access_token_secret": access_token_secret,
+    }
+
+def authenticate(
+    credentials: Annotated[HTTPBasicCredentials, Depends(security)],
+):
+    auth = return_token(credentials.username, credentials.password)
+
+    if auth["code"] != 0:
+        print("Could not authenticate with Instapaper")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    app.state.access_token = auth["access_token"]
+    app.state.token_secret = auth["access_token_secret"]
+    return auth["code"] == 0
 
 def search_existing(source):
     urlist = []
@@ -104,6 +123,47 @@ def search_existing(source):
     else:
         urlist.append('error')
     return urlist, response.status_code
+
+def save_new_items_to_instapaper(feed_url, source, existurls):
+    url = base_url + 'bookmarks/add'
+    print(f"Checking {feed_url}...")
+    # print (f"Existing URLs {existurls}...")
+    
+    try:
+        feed = feedparser.parse(feed_url)
+        if not feed.entries:
+            print("No entries found in feed.")
+            return
+            
+        # Process items in reverse order (oldest first)
+        entries = reversed(feed.entries)
+        batch = []
+        
+        for entry in entries:
+            # print(f"Checking if {entry.link} is a new link... ")
+            if entry.link not in existurls:
+               print(f"{entry.link} is a new link and will be pushed")
+               if isinstance(source, list):
+                tags_obj = source
+               else: 
+                tags_obj = [{"name": source}]
+               description = (
+                  getattr(entry, "summary", None)
+                  or getattr(entry, "description", None)
+                  or getattr(entry, "summary_detail", {}).get("value", "")
+                  or ""
+                )
+               params = {
+                   "url": entry.link,
+                   "title": entry.title,
+                   "description": description,
+                   "tags": json.dumps(tags_obj)   # other optional params like folder_id, resolve_final_url, etc.
+                }
+               session = make_instapaper_client()
+               resp = session.post(url, data=params)
+               print(resp.text)
+    except Exception as e:
+        print(f"Error processing feed {feed_url}: {str(e)}")
 
 def retrievehousekeepItems(amount, skipStarred, getArchived, tag):
     url = base_url + 'bookmarks/list'
@@ -164,22 +224,8 @@ async def delete_items(amount, skipStarred, removefromarchived, bytag):
         resp = session.post(url, data=params)
     return "Deletion completed"
 
-def authenticate(
-    credentials: Annotated[HTTPBasicCredentials, Depends(security)],
-):
-    auth = return_token(credentials.username, credentials.password)
 
-    if auth["code"] != 0:
-        print("Could not authenticate with Instapaper")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    app.state.access_token = auth["access_token"]
-    app.state.token_secret = auth["access_token_secret"]
-    return auth["code"] == 0
-
+# API Endpoints
 
 @app.get("/")
 async def root():
@@ -216,6 +262,7 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
           return f"Invalid source. Available sources: {', '.join(RSS_FEEDS.keys())}"
        existurls, code = search_existing(source)
        if code == 200:
+          
           with concurrent.futures.ThreadPoolExecutor() as executor:
             list(executor.map(lambda feed: save_new_items_to_instapaper(feed, source, existurls), RSS_FEEDS[source]))
           return f"Saved {source} feeds to pocket"
@@ -223,54 +270,9 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
           return f"Cannot retrieve saved {source} feeds at the moment. Will not update news in this run."
 
 
-def return_token(username, password):
-    url = base_url + 'oauth/access_token'
 
-    oauth = OAuth1Session(
-        CONSUMER_KEY,
-        client_secret=CONSUMER_SECRET
-    )
-
-    # xAuth parameters go in POST body
-    params = {
-        "x_auth_username": username,
-        "x_auth_password": password,
-        "x_auth_mode": "client_auth",
-    }
-    resp = oauth.post(url, data=params)
-    
-    if resp.status_code != 200:
-        return {
-            "code": -1,
-            "detail": "Failed to obtain access token"
-            }
-
-    # Response is qline-like: oauth_token=...&oauth_token_secret=...
-    parts = dict(
-        item.split("=", 1) for item in resp.text.strip().split("&")
-    )
-    access_token = parts["oauth_token"]
-    access_token_secret = parts["oauth_token_secret"]
-
-    # You should store these for this user (DB, session, etc.)
-    return {
-        "code": 0,
-        "access_token": access_token,
-        "access_token_secret": access_token_secret,
-    }
-
-
-def make_instapaper_client():
-    return OAuth1Session(
-        CONSUMER_KEY,
-        client_secret=CONSUMER_SECRET,
-        resource_owner_key= app.state.access_token,
-        resource_owner_secret= app.state.token_secret,
-        signature_method="HMAC-SHA1",
-    )
-
-    
-
-
-
-
+@app.post("/save", response_class=PlainTextResponse)
+async def save_source(request: saveRequest, verification: bool = Depends(authenticate)):
+    if verification:
+        save_new_items_to_instapaper(request.url, request.tags or [], [])
+        return "Saved provided URL to Instapaper"
