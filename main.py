@@ -9,6 +9,7 @@ from requests_oauthlib import OAuth1Session
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import PlainTextResponse, ORJSONResponse
+from scrape import fetch_items_from_sanrio_news
 
 app = FastAPI()
 security = HTTPBasic() 
@@ -277,3 +278,9 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
 async def save_source(request: saveRequest, verification: bool = Depends(authenticate)):
     if verification:
         return save_new_items_to_instapaper(request.url, request.tags or [], [])
+
+@app.get("/sanriorss/gudetama")
+def scrape_route():
+    url = 'https://www.sanrio.co.jp/news/?chara=2454&pg=1'
+    result = fetch_items_from_sanrio_news(url)
+    return result
