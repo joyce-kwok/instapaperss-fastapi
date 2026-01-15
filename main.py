@@ -136,8 +136,7 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
     try:
         feed = feedparser.parse(feed_url)
         if not feed.entries:
-            print("No entries found in feed.")
-            return
+            return f"No entries found in {feed_url}."
             
         # Process items in reverse order (oldest first)
         entries = reversed(feed.entries)
@@ -166,8 +165,9 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
                session = make_instapaper_client()
                resp = session.post(url, data=params)
                print(resp.text)
+        return f"Finished processing feed {feed_url}."
     except Exception as e:
-        print(f"Error processing feed {feed_url}: {str(e)}")
+        return f"Error processing feed {feed_url}: {str(e)}"
 
 def retrievehousekeepItems(amount, skipStarred, getArchived, tag):
     url = base_url + 'bookmarks/list'
@@ -266,17 +266,14 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
           return f"Invalid source. Available sources: {', '.join(RSS_FEEDS.keys())}"
        existurls, code = search_existing(source)
        if code == 200:
-          
           with concurrent.futures.ThreadPoolExecutor() as executor:
-            list(executor.map(lambda feed: save_new_items_to_instapaper(feed, source, existurls), RSS_FEEDS[source]))
-          return f"Saved {source} feeds to pocket"
+            results = list(executor.map(lambda feed: save_new_items_to_instapaper(feed, source, existurls), RSS_FEEDS[source]))
+          return "\n".join(results)
        else:
           return f"Cannot retrieve saved {source} feeds at the moment. Will not update news in this run."
-
 
 
 @app.post("/save", response_class=PlainTextResponse)
 async def save_source(request: saveRequest, verification: bool = Depends(authenticate)):
     if verification:
-        save_new_items_to_instapaper(request.url, request.tags or [], [])
-        return "Saved provided URL to Instapaper"
+        return save_new_items_to_instapaper(request.url, request.tags or [], [])
