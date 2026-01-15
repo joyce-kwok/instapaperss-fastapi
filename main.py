@@ -39,7 +39,7 @@ class loginRequest(BaseModel):
 
 class saveRequest(BaseModel):
     url: str
-    tags: Optional[list[Tag]] = Annotated[list[Tag], Field(strict=True), WithJsonSchema({'name': 'Tag Name'})]
+    tags: Optional[list[Tag]] = Annotated[list[Tag], Field(strict=True)]
 
 # Authentication methods
 def make_instapaper_client():
