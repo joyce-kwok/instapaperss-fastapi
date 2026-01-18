@@ -10,6 +10,9 @@
             "https://rthk9.rthk.hk/rthk/news/rss/c_expressnews_cfinance.xml",
             "https://rthk9.rthk.hk/rthk/news/rss/c_expressnews_clocal.xml"
         ],
+        "kbs": [
+            "http://world.kbs.co.kr/rss/rss_enternews.htm?lang=e"
+        ],
         "scmp": [
             "https://www.scmp.com/rss/2/feed",
             "https://www.scmp.com/rss/318255/feed"
