@@ -276,19 +276,17 @@ async def save_source(source: str, verification: bool = Depends(authenticate)):
 @app.post("/save", response_class=PlainTextResponse)
 async def save_url(request: saveRequest, verification: bool = Depends(authenticate)):
     if verification:
+        existurls = []
         if request.tags:
             with concurrent.futures.ThreadPoolExecutor() as executor:
                results = list(executor.map(lambda t: search_existing(t.name), request.tags))
-            existurls = []
             for urllist, code in results:
                 if code == 200:
                     existurls.extend(urllist)
+                    print(f"Existing URLs for tag retrieved: {urllist}")
                 else:
                     return ("Error retrieving existing URLs for one of the tags")
-            return save_new_items_to_instapaper(request.url, request.tags, existurls)
-
-        else:
-             return save_new_items_to_instapaper(request.url, request.tags, [])
+        return save_new_items_to_instapaper(request.url, request.tags, existurls)
 
 
 
