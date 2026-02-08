@@ -160,6 +160,7 @@ def save_new_items_to_instapaper(feed_url, source, existurls):
                    "url": entry.link,
                    "title": entry.title,
                    "description": description,
+                   "resolve_final_url": 1,
                    "tags": tags_obj   # other optional params like folder_id, resolve_final_url, etc.
                 }
                session = make_instapaper_client()
